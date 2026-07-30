@@ -1,0 +1,36 @@
+name: Build Python EXE
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: # 允許手動觸發按鈕
+
+jobs:
+  build:
+    # 為了支援 Python 3.7，使用 windows-2019
+    runs-on: windows-2019
+
+    steps:
+    - name: 取得原始碼
+      uses: actions/checkout@v3
+
+    - name: 設定 Python 3.7 環境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.7'
+
+    - name: 安裝相依套件與 PyInstaller
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: 執行 PyInstaller 進行打包 (單一執行檔, 無背景終端機視窗)
+      run: |
+        pyinstaller --noconfirm --onefile --windowed --name "LawRtfToExcel" main.py
+
+    - name: 上傳打包好的 EXE 作為 Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: LawRtfToExcel-Windows-EXE
+        path: dist/LawRtfToExcel.exe
