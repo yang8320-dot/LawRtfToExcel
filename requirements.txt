@@ -1,0 +1,2 @@
+striprtf==0.0.26
+openpyxl==3.1.2
