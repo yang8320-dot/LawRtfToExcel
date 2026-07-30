@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest  # 👈 改成 latest，取得機器的速度會快很多
+    runs-on: windows-latest
 
     steps:
     - name: 取得原始碼
@@ -22,9 +22,9 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: 執行 PyInstaller 進行打包
+    - name: 執行 PyInstaller 進行打包 (支援拖曳套件)
       run: |
-        pyinstaller --noconfirm --onefile --windowed --name "LawRtfToExcel" main.py
+        pyinstaller --noconfirm --onefile --windowed --name "LawRtfToExcel" --collect-all tkinterdnd2 main.py
 
     - name: 上傳打包好的 EXE
       uses: actions/upload-artifact@v4
