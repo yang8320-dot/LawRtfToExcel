@@ -1,18 +1,18 @@
 name: Build Python EXE (Manual)
 
 on:
-  workflow_dispatch: # 取消 push 自動執行，僅允許手動點擊按鈕觸發
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: windows-latest  # 👈 改成 latest，取得機器的速度會快很多
 
     steps:
     - name: 取得原始碼
-      uses: actions/checkout@v4 # 升級至 v4 解決卡住問題
+      uses: actions/checkout@v4
 
     - name: 設定 Python 3.7 環境
-      uses: actions/setup-python@v5 # 升級至 v5
+      uses: actions/setup-python@v5
       with:
         python-version: '3.7'
 
@@ -22,13 +22,13 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: 執行 PyInstaller 進行打包 (單一執行檔, 無背景視窗)
+    - name: 執行 PyInstaller 進行打包
       run: |
         pyinstaller --noconfirm --onefile --windowed --name "LawRtfToExcel" main.py
 
-    - name: 上傳打包好的 EXE (Artifact)
-      uses: actions/upload-artifact@v4 # 升級至 v4 確保穩定產出下載檔
+    - name: 上傳打包好的 EXE
+      uses: actions/upload-artifact@v4
       with:
         name: LawRtfToExcel-Windows-EXE
         path: dist/LawRtfToExcel.exe
-        compression-level: 0 # 關閉壓縮以加快處理速度
+        compression-level: 0
