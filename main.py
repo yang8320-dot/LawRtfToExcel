@@ -4,6 +4,7 @@ import ctypes
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from tkinterdnd2 import TkinterDnD, DND_FILES  # 匯入拖曳套件
 from datetime import datetime
 from striprtf.striprtf import rtf_to_text
 from openpyxl import Workbook
@@ -11,27 +12,24 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
 # ==========================================
-# 解決 Windows 125% / 150% 縮放導致文字模糊的問題
+# 解決 Windows 125% / 150% 縮放導致文字模糊
 # ==========================================
 if os.name == 'nt':
     try:
-        # Windows 8.1 / 10 / 11
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         try:
-            # Windows Vista / 7 / 8
             ctypes.windll.user32.SetProcessDPIAware()
         except Exception:
             pass
 
 # ==========================================
-# 核心邏輯區塊
+# 核心邏輯區塊 (維持不變)
 # ==========================================
 def chinese_to_arabic(chn_str: str) -> int:
     s = chn_str.replace("、", "").replace("(", "").replace(")", "")
     s = s.replace("（", "").replace("）", "").strip()
-    if s.isdigit():
-        return int(s)
+    if s.isdigit(): return int(s)
     num_dict = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, 
                 "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
                 "百": 100, "千": 1000, "零": 0}
@@ -63,11 +61,9 @@ def format_tiao(article_str: str) -> str:
 def get_rtf_text(file_path: str) -> str:
     try:
         try:
-            with open(file_path, 'r', encoding='cp950') as file:
-                rtf_content = file.read()
+            with open(file_path, 'r', encoding='cp950') as file: rtf_content = file.read()
         except UnicodeDecodeError:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
-                rtf_content = file.read()
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as file: rtf_content = file.read()
         return rtf_to_text(rtf_content)
     except Exception as e:
         raise Exception(f"讀取 RTF 失敗：{str(e)}")
@@ -79,19 +75,16 @@ def write_to_excel(records, save_path):
     
     headers = ["日期", "法令名稱", "條", "項", "款", "目", "內容", "重點摘要", 
                "適用性", "符合度", "有提升績效機會", "有潛在不符合風險", "鑑別日期", "備註"]
-    
     header_fill = PatternFill(start_color="FFEE99", end_color="FFEE99", fill_type="solid")
     header_font = Font(name="微軟正黑體", bold=True)
     
     ws.append(headers)
     for col_idx in range(1, 15):
         cell = ws.cell(row=1, column=col_idx)
-        cell.fill = header_fill
-        cell.font = header_font
+        cell.fill = header_fill; cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    for row_data in records:
-        ws.append(row_data)
+    for row_data in records: ws.append(row_data)
         
     max_row = len(records) + 1
     font_default = Font(name="微軟正黑體")
@@ -100,41 +93,28 @@ def write_to_excel(records, save_path):
     
     col_widths = {'A': 12, 'B': 20, 'C': 8, 'D': 8, 'E': 8, 'F': 8, 'G': 55, 
                   'H': 40, 'I': 10, 'J': 10, 'K': 15, 'L': 15, 'M': 12, 'N': 40}
-    for col, width in col_widths.items():
-        ws.column_dimensions[col].width = width
+    for col, width in col_widths.items(): ws.column_dimensions[col].width = width
 
     for r in range(2, max_row + 1):
         for c in range(1, 15):
-            cell = ws.cell(row=r, column=c)
-            cell.font = font_default
-            if c in [3, 4, 5, 6]: 
-                cell.number_format = '@'
-                cell.alignment = align_center
-            elif c in [2, 7, 8, 14]:
-                cell.alignment = align_left_wrap
-            elif c in [1, 9, 10, 11, 12, 13]:
-                cell.alignment = align_center
+            cell = ws.cell(row=r, column=c); cell.font = font_default
+            if c in [3, 4, 5, 6]: cell.number_format = '@'; cell.alignment = align_center
+            elif c in [2, 7, 8, 14]: cell.alignment = align_left_wrap
+            elif c in [1, 9, 10, 11, 12, 13]: cell.alignment = align_center
                 
     ws.freeze_panes = "A2"
-    
     if max_row >= 2:
         dv_i = DataValidation(type="list", formula1='"適用,不適用,參考,確認中"', showDropDown=True)
         dv_j = DataValidation(type="list", formula1='"合法,不合法"', showDropDown=True)
         dv_kl = DataValidation(type="list", formula1='" ,v"', showDropDown=True)
-        ws.add_data_validation(dv_i)
-        ws.add_data_validation(dv_j)
-        ws.add_data_validation(dv_kl)
-        dv_i.add(f"I2:I{max_row}")
-        dv_j.add(f"J2:J{max_row}")
-        dv_kl.add(f"K2:K{max_row}")
-        dv_kl.add(f"L2:L{max_row}")
+        ws.add_data_validation(dv_i); ws.add_data_validation(dv_j); ws.add_data_validation(dv_kl)
+        dv_i.add(f"I2:I{max_row}"); dv_j.add(f"J2:J{max_row}"); dv_kl.add(f"K2:K{max_row}"); dv_kl.add(f"L2:L{max_row}")
 
     wb.save(save_path)
 
 def process_law_data(rtf_path: str, save_path: str, stop_event: threading.Event) -> bool:
     plain_text = get_rtf_text(rtf_path)
-    if not plain_text:
-        return False
+    if not plain_text: return False
 
     lines = plain_text.replace('\r\n', '\n').replace('\r', '\n').split('\n')
     law_name, law_date = "", ""
@@ -155,9 +135,7 @@ def process_law_data(rtf_path: str, save_path: str, stop_event: threading.Event)
                             "", "", "", "", "", datetime.now().strftime("%Y-%m-%d"), ""])
 
     for i, line in enumerate(lines):
-        if i % 50 == 0 and stop_event.is_set():
-            return False
-
+        if i % 50 == 0 and stop_event.is_set(): return False
         line = line.strip()
         line = reg_trim_digits.sub("", line)
         if not line: continue
@@ -205,37 +183,31 @@ def process_law_data(rtf_path: str, save_path: str, stop_event: threading.Event)
     return True
 
 # ==========================================
-# GUI 介面區塊
+# GUI 介面區塊 (包含拖曳與刪除功能)
 # ==========================================
 class LawConverterApp:
     def __init__(self, root):
         self.root = root
         self.root.title("法規 RTF 轉 Excel 批次工具")
-        
-        # 調整預設視窗大小，讓高 DPI 縮放後不會覺得太擁擠
         self.root.geometry("750x500")
+        self.root.option_add("*Font", ("微軟正黑體", 11))
         
-        # 設定全局字型，提升閱讀體驗
-        default_font = ("微軟正黑體", 11)
-        self.root.option_add("*Font", default_font)
-
         self.file_paths = []
         self.stop_event = threading.Event()
         self.setup_ui()
 
     def setup_ui(self):
-        # 建立按鈕樣式 (加大按鈕文字)
         style = ttk.Style()
         style.configure("TButton", font=("微軟正黑體", 11))
         
         # 頂部按鈕區
         frame_top = tk.Frame(self.root, pady=12, padx=15)
         frame_top.pack(fill=tk.X)
-        
         ttk.Button(frame_top, text="加入檔案 (可多選)", command=self.add_files).pack(side=tk.LEFT, padx=5)
         ttk.Button(frame_top, text="清空清單", command=self.clear_files).pack(side=tk.LEFT, padx=5)
+        tk.Label(frame_top, text="💡 提示：支援拖曳檔案、Delete鍵/右鍵可刪除", fg="gray").pack(side=tk.RIGHT, padx=5)
 
-        # 中間清單區
+        # 中間清單區 (加入拖曳設定)
         frame_mid = tk.Frame(self.root, padx=20)
         frame_mid.pack(fill=tk.BOTH, expand=True)
         
@@ -246,22 +218,76 @@ class LawConverterApp:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.listbox.config(yscrollcommand=scrollbar.set)
 
+        # 🎯 註冊拖曳事件
+        self.listbox.drop_target_register(DND_FILES)
+        self.listbox.dnd_bind('<<Drop>>', self.on_file_drop)
+
+        # 🎯 註冊刪除按鍵 (Delete)
+        self.listbox.bind('<Delete>', self.delete_selected)
+        
+        # 🎯 註冊右鍵選單
+        self.context_menu = tk.Menu(self.root, tearoff=0, font=("微軟正黑體", 10))
+        self.context_menu.add_command(label="🗑️ 刪除選取檔案", command=self.delete_selected)
+        self.listbox.bind('<Button-3>', self.show_context_menu)
+
         # 底部控制區
         frame_bottom = tk.Frame(self.root, pady=15, padx=15)
         frame_bottom.pack(fill=tk.X)
 
         self.btn_run = ttk.Button(frame_bottom, text="開始執行轉換", command=self.start_processing)
         self.btn_run.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
-        
         self.btn_stop = ttk.Button(frame_bottom, text="停止 (中止)", command=self.stop_processing, state=tk.DISABLED)
         self.btn_stop.pack(side=tk.LEFT, padx=10)
 
         # 狀態與進度條
         self.lbl_status = tk.Label(self.root, text="準備就緒", fg="blue", font=("微軟正黑體", 10, "bold"))
         self.lbl_status.pack(pady=5)
-        
         self.progress = ttk.Progressbar(self.root, orient=tk.HORIZONTAL, mode='determinate')
         self.progress.pack(fill=tk.X, padx=20, pady=10)
+
+    # 拖曳檔案處理邏輯
+    def on_file_drop(self, event):
+        # 將 Tkinter 的拖曳字串轉換為 Python 的清單格式
+        files = self.root.tk.splitlist(event.data)
+        added_count = 0
+        for f in files:
+            if f.lower().endswith(".rtf") and f not in self.file_paths:
+                self.file_paths.append(f)
+                self.listbox.insert(tk.END, f)
+                added_count += 1
+                
+        if added_count > 0:
+            self.lbl_status.config(text=f"已透過拖曳加入 {added_count} 個檔案，共 {len(self.file_paths)} 個")
+        else:
+            self.lbl_status.config(text="未加入任何新檔案 (僅支援 .rtf 格式或檔案已存在)", fg="red")
+
+    # 刪除選取檔案邏輯
+    def delete_selected(self, event=None):
+        selected_indices = self.listbox.curselection()
+        if not selected_indices:
+            return
+            
+        # 必須從後面開始刪除，才不會影響前面的 index
+        for i in reversed(selected_indices):
+            self.listbox.delete(i)
+            del self.file_paths[i]
+            
+        self.lbl_status.config(text=f"已刪除選取檔案，清單剩餘 {len(self.file_paths)} 個檔案", fg="blue")
+
+    # 顯示右鍵選單
+    def show_context_menu(self, event):
+        # 判斷右鍵點擊的位置是否有項目
+        clicked_index = self.listbox.nearest(event.y)
+        
+        # 若點擊的項目不在目前的選取範圍內，就單獨選取該項目
+        if clicked_index not in self.listbox.curselection():
+            self.listbox.selection_clear(0, tk.END)
+            self.listbox.selection_set(clicked_index)
+            self.listbox.activate(clicked_index)
+            
+        # 只要有選取的項目就顯示右鍵選單
+        if self.listbox.curselection():
+            self.context_menu.post(event.x_root, event.y_root)
 
     def add_files(self):
         files = filedialog.askopenfilenames(title="選擇法規 RTF 檔案", filetypes=[("RTF Files", "*.rtf")])
@@ -269,7 +295,7 @@ class LawConverterApp:
             if f not in self.file_paths:
                 self.file_paths.append(f)
                 self.listbox.insert(tk.END, f)
-        self.lbl_status.config(text=f"已加入 {len(self.file_paths)} 個檔案")
+        self.lbl_status.config(text=f"目前清單共 {len(self.file_paths)} 個檔案", fg="blue")
 
     def clear_files(self):
         self.file_paths.clear()
@@ -311,7 +337,6 @@ class LawConverterApp:
                 break
                 
             self.update_status(f"正在處理 ({i+1}/{len(self.file_paths)}): {os.path.basename(file_path)}", "blue")
-            
             save_path = file_path.replace(".rtf", "_轉換結果.xlsx")
             
             try:
@@ -334,6 +359,7 @@ class LawConverterApp:
         self.root.after(0, lambda: self.lbl_status.config(text=text, fg=color))
 
 if __name__ == "__main__":
-    root = tk.Tk()
+    # 使用支援拖曳的 TkinterDnD 根視窗
+    root = TkinterDnD.Tk()
     app = LawConverterApp(root)
     root.mainloop()
